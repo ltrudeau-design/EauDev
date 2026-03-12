@@ -1,0 +1,133 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NARROW MCP SERVER MODEL CARD — Memory MCP
+# ─────────────────────────────────────────────────────────────────────────────
+
+server_id: memory-mcp-v1
+server_name: Memory MCP
+server_version: "1.0.0"
+author: Cluster
+created_at: "2026-03-03T00:00:00Z"
+updated_at: "2026-03-03T00:00:00Z"
+
+base_model: ""
+lora_version: ""
+lora_trained_on: []
+lora_training_iters: 0
+lora_rank: 0
+lora_merged: false
+
+description: >
+  EauDev's runtime memory system. Fully deterministic, local-first, zero-inference.
+  Five layers: ObservationBuffer (rolling turns), EpisodicMemory (session records),
+  PersistentFacts (typed confidence-scored facts), FTS5 (keyword search),
+  KnowledgeGraph (SQLite BFS traversal). 18 MCP tools. All layers persist to
+  separate SQLite databases under ~/.eaudev/.
+
+capability_tags:
+  - episodic-memory
+  - fact-storage
+  - observation-buffer
+  - knowledge-graph
+  - full-text-search
+  - session-consolidation
+  - lora-lifecycle-tracking
+
+input_types:
+  - observation-turn
+  - session-summary
+  - fact
+  - entity
+  - relationship
+
+output_types:
+  - session-context
+  - episodic-record
+  - fact-list
+  - graph-query-result
+  - consolidation-artefact
+  - lora-status
+
+tool_sequence:
+  - session_start           # Inject context from prior sessions
+  - store_observation       # Accumulate turns during session
+  - store_fact              # Persist high-confidence decisions
+  - store_entity            # Graph node storage
+  - store_relationship      # Graph edge storage
+  - search_memory           # FTS5 keyword search
+  - query_graph             # BFS graph traversal
+  - session_end             # Compress buffer → episodic record
+  - export_consolidation_artefact  # → alpaca JSONL for LoRA training [planned]
+  - get_lora_status         # LoRA lifecycle state [planned]
+
+knowledge_graph:
+  namespaces: []
+  snapshot_path: ""
+  update_cadence: "not applicable — Memory MCP is independent of Archive"
+
+constraints: >
+  Memory MCP is entirely independent of Archive MCP — no data flows between them
+  in either direction. It does not perform inference at any point. All reads and
+  writes are deterministic SQLite operations. It does not write to Archive MCP.
+  The LoRA consolidation pipeline (export_consolidation_artefact) is additive —
+  all existing layers and tools unchanged.
+
+lifecycle_mode: persistent
+
+spawn_trigger: >
+  Memory MCP is always resident during active EauDev sessions. It is spawned
+  automatically at session start and stopped at session end. EauDev does not
+  need to make an explicit decision to spawn it.
+
+termination:
+  condition: session_end
+  idle_timeout_minutes: 0
+
+update_trigger: "not applicable — Memory MCP has no LoRA"
+last_rebuilt: "2026-03-03T00:00:00Z"
+
+paths:
+  server_entry: ""
+  model_weights: ""
+  graph_snapshot: ""
+  system_prompt: ""
+  log_dir: ""
+  task_reports_dir: ""
+
+archive_namespaces:
+  - agent.memory    # Receives LoRA adapter artefacts from session_to_lora.py
+
+purpose: >
+  Memory MCP is the staging ground for EauDev's persistent memory. It accumulates
+  episodic records during sessions, which are then consolidated into LoRA deltas
+  at session end. The 5-layer architecture provides the right data at the right
+  granularity for both runtime context injection and LoRA training signal.
+
+domain: "Agent Memory"
+
+provenance: []
+
+design_notes: >
+  Keywords extracted deterministically — no LLM inference at write or read time.
+  Source turns preserved in every episodic record — consolidation pipeline has
+  access to both compressed summary and raw turns. Facts layer doubles as LoRA
+  lifecycle state storage (lora_lifecycle category). Two new tools planned:
+  export_consolidation_artefact and get_lora_status.
+
+related_servers:
+  - archive-mcp-v3
+
+oracle_threshold: "LOW"
+
+resource_profile:
+  model_size_gb: 0.1
+  tier: light
+  concurrent_limit: 1
+  requires_eaudev_yield: false
+
+operational_state:
+  current_state: DORMANT
+  last_heartbeat: ""
+  active_task: ""
+  session_count: 0
+  delta_pending: false
+  last_error: ""

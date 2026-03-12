@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "eaudev"
+version = "0.1.0"
+description = "Local AI coding agent powered by Qwen3.5 on mlx_lm"
+requires-python = ">=3.11"
+dependencies = [
+    "prompt_toolkit>=3.0",
+    "rich>=13.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+    "bashlex>=0.18",
+    "loguru>=0.7",
+    "humanize>=4.0",
+]
+
+[project.scripts]
+eaudev = "eaudev.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["eaudev*"]
+
+# VoiceIO dependencies — install into /Users/eaumac/.cluster/pytorch_env:
+# pip install faster-whisper sounddevice
+# (torch, numpy, torchaudio already present)
+# Run EauDev via START_EAUDEV.command to use the pytorch env automatically.

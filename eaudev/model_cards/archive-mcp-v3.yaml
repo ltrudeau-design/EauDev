@@ -1,0 +1,134 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NARROW MCP SERVER MODEL CARD — Archive MCP
+# ─────────────────────────────────────────────────────────────────────────────
+
+server_id: archive-mcp-v3
+server_name: Archive MCP
+server_version: "3.0.0"
+author: Cluster
+created_at: "2026-03-03T00:00:00Z"
+updated_at: "2026-03-03T00:00:00Z"
+
+base_model: "Qwen2.5-7B-Instruct-Q4_K_M"
+lora_version: ""
+lora_trained_on: []
+lora_training_iters: 0
+lora_rank: 0
+lora_merged: false
+
+description: >
+  Permanent knowledge substrate for Cluster. Receives completed Analyst Packages,
+  enriches them with LLM metadata and typed domain graph triples, stores them in
+  a versioned vault with FTS5 full-text search, and serves 7 MCP tools for
+  retrieval, graph traversal, and cross-domain synthesis. The single source of
+  truth for all ingested domain knowledge.
+
+capability_tags:
+  - document-storage
+  - knowledge-graph
+  - fts5-search
+  - domain-graph
+  - cross-domain-synthesis
+  - metadata-enrichment
+  - provenance-tracking
+
+input_types:
+  - analyst-package
+  - namespace
+  - document-id
+  - search-query
+
+output_types:
+  - vault-document
+  - search-results
+  - domain-graph
+  - cross-domain-graph
+  - validation-report
+
+tool_sequence:
+  - archive_document_tool      # Ingest Analyst Package (7-stage pipeline)
+  - search_archive_tool        # FTS5 full-text search
+  - get_document_tool          # Retrieve by document_id
+  - list_by_namespace_tool     # List documents by namespace
+  - clear_document_tool        # Remove document + graph provenance
+  - get_domain_graph_tool      # Return namespace domain KG snapshot
+  - synthesize_cross_domain_graph_tool  # Ephemeral cross-namespace graph
+
+knowledge_graph:
+  namespaces:
+    - audio.dsp
+    - audio.reaktor
+    - code.cluster.reference
+  snapshot_path: ""
+  update_cadence: "on ingest — graph updated at Stage 2b of every archive_document_tool call"
+
+constraints: >
+  Accepts only completed Analyst Packages — never raw files, PDFs, or URLs.
+  Does not normalise, chunk, or process vision (Analyst MCP responsibility).
+  Does not write to Memory MCP.
+  Maintains its own Qwen2.5-7B enrichment server on port 8083 — not shared.
+
+lifecycle_mode: persistent
+
+spawn_trigger: >
+  Spawn when user needs to store a document, search archived knowledge, retrieve
+  a specific document, inspect the domain knowledge graph, or request cross-domain
+  graph synthesis. Archive MCP is always resident during active sessions.
+
+termination:
+  condition: session_end
+  idle_timeout_minutes: 0
+
+update_trigger: "manual — rebuild domain graph when new Tier 1 source material ingested"
+last_rebuilt: "2026-03-03T00:00:00Z"
+
+paths:
+  server_entry: ""      # Set to absolute path at deployment
+  model_weights: ""
+  graph_snapshot: ""
+  system_prompt: ""
+  log_dir: ""
+  task_reports_dir: ""
+
+archive_namespaces:
+  - audio.dsp
+  - audio.reaktor
+  - code.cluster.reference
+  - agent.memory
+
+purpose: >
+  Archive MCP is the living knowledge substrate for Cluster. Every other component
+  that needs domain knowledge derives it from Archive — either at runtime via MCP
+  tools, or at build time when constructing narrow server LoRAs and KGs.
+
+domain: "Knowledge Management"
+
+provenance:
+  - "Reaktor 6 Building in Core (validated ingest 2026-02-26)"
+  - "DR.KNOWS graph architecture (arxiv: 2308.14321)"
+
+design_notes: >
+  Enrichment model (Qwen2.5-7B) chosen for speed and low memory footprint (~4.4GB)
+  so it does not conflict with EauDev's primary model. Stage 2b domain graph is
+  non-blocking — vault is the source of truth, graph is a derived artefact.
+  All 8 critical bugs from Feb 2026 audit remediated. 7 MCP tools registered.
+
+related_servers:
+  - analyst-mcp-v1
+  - extractor-mcp-v9
+
+oracle_threshold: "MEDIUM"
+
+resource_profile:
+  model_size_gb: 4.4
+  tier: light
+  concurrent_limit: 1
+  requires_eaudev_yield: false
+
+operational_state:
+  current_state: DORMANT
+  last_heartbeat: ""
+  active_task: ""
+  session_count: 0
+  delta_pending: false
+  last_error: ""

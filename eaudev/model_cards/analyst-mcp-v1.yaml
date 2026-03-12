@@ -1,0 +1,126 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NARROW MCP SERVER MODEL CARD — Analyst MCP
+# ─────────────────────────────────────────────────────────────────────────────
+
+server_id: analyst-mcp-v1
+server_name: Analyst MCP
+server_version: "1.1.0"
+author: Cluster
+created_at: "2026-03-03T00:00:00Z"
+updated_at: "2026-03-04T00:00:00Z"
+
+base_model: ""
+lora_version: ""
+lora_trained_on: []
+lora_training_iters: 0
+lora_rank: 0
+lora_merged: false
+
+description: >
+  Universal intake layer for Cluster. Accepts any source material — PDFs,
+  codebases, Markdown, images, schematics — and produces a rigidly-structured
+  Analyst Package on disk. Performs survey, pedigree analysis (libclang),
+  normalisation, heading-based chunking, and vision processing via VLM.
+  Stops at the package boundary — writes nothing to Archive or Memory.
+
+capability_tags:
+  - scanned-pdf-ocr
+  - two-pass-ocr-verification
+  - document-intake
+  - pdf-normalisation
+  - codebase-pedigree
+  - chunking
+  - vision-processing
+  - survey
+  - package-assembly
+
+input_types:
+  - pdf
+  - markdown
+  - codebase
+  - image
+  - web-page
+
+output_types:
+  - analyst-package
+
+tool_sequence:
+  - survey_target      # Identify source type, extract manifest
+  - pedigree_scan      # libclang symbol extraction for codebases
+  - normalise          # Convert to full_text.md
+  - chunk              # Heading-based chunking → chunk_index.json
+  - vision_process     # VLM description of images/diagrams
+  - package_assemble   # Write package.json, assemble output directory
+
+knowledge_graph:
+  namespaces: []
+  snapshot_path: ""
+  update_cadence: "not applicable — no KG dependency"
+
+constraints: >
+  Analyst MCP produces Analyst Packages only. It does not write to Archive MCP,
+  Memory MCP, or any other component. It does not perform semantic enrichment —
+  that is Archive MCP's responsibility at Stage 2. It does not train models.
+
+lifecycle_mode: one_shot
+
+spawn_trigger: >
+  Spawn when user provides source material that needs to be ingested into Cluster —
+  a PDF document, a codebase directory, a web page, or any raw source that needs
+  to be normalised and packaged for Archive MCP ingestion.
+
+termination:
+  condition: task_complete
+  idle_timeout_minutes: 0
+
+update_trigger: "not applicable"
+last_rebuilt: "2026-03-03T00:00:00Z"
+
+paths:
+  server_entry: ""
+  model_weights: ""
+  graph_snapshot: ""
+  system_prompt: ""
+  log_dir: ""
+  task_reports_dir: ""
+
+archive_namespaces: []
+
+purpose: >
+  Analyst MCP decouples raw source material intake from semantic enrichment.
+  Any source format, any domain, any platform — Analyst MCP normalises it into
+  a standard Analyst Package that Archive MCP can ingest without knowing anything
+  about the original format.
+
+domain: "Document Processing"
+
+provenance:
+  - "Reaktor 6 PDF — validated intake 2026-02-26"
+  - "DaisySP codebase — libclang pedigree extraction"
+
+design_notes: >
+  The VLM vision processing uses an additive value gate — only describes images
+  that add information not already in the surrounding text. Vision prompt has
+  three layers: invariant role, target context from manifest, per-image context.
+  Taxonomy defined in config/taxonomy.yaml — domain-agnostic at core,
+  audio domain proof-of-concept. v1.1: per-page scanned PDF detection added to normalise.py (alphanumeric density threshold MIN_TEXT_DENSITY=0.15, page rendered at 200 DPI). Two-pass VLM OCR added to vision.py: Pass 1 transcribes at temperature=0.0; Pass 2 self-verifies with explicit focus on mathematical and technical notation. Low-confidence OCR pages wrapped in HTML comments in full_text.md and surfaced in analyze_target warnings field.
+
+related_servers:
+  - archive-mcp-v3
+  - extractor-mcp-v9
+
+oracle_threshold: "LOW"
+
+resource_profile:
+  model_size_gb: 0.5
+  tier: light
+  concurrent_limit: 1
+  requires_eaudev_yield: false
+
+operational_state:
+  current_state: DORMANT
+  last_heartbeat: ""
+  active_task: ""
+  session_count: 0
+  delta_pending: false
+  last_error: ""

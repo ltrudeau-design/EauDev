@@ -1,0 +1,36 @@
+FROM CLAUDE SONNET 4.6:
+
+Good report. Qwen did a thorough job. Let me give you my read on it.
+
+**What I trust:**
+
+The wiring gaps section is the most valuable finding. Four things that exist but aren't connected:
+
+- `core.py` — confirmed deprecated, just cluttering the root
+- `generate_hook_mcp/server.py` — built but not registered. Worth understanding what it does before deciding
+- `memory_core.py` — this is the real one. There are now **two memory facades**: `MemoryCore` (async, unused) and `EauDevMemoryStore` (sync, active). That's architectural debt that will bite eventually
+- `context_monitor.py` — built but not wired into default hooks config
+
+**What I'd push back on:**
+
+The Windows compatibility issue (issue 5) — EauDev runs on your M1 Mac. `select()` on Unix pipes is correct and intentional. Not worth touching.
+
+The `rglob` performance issue (issue 6) — only matters at scale you don't have yet. Low priority.
+
+The VoiceIO issues (1 and 2) — real bugs, but VoiceIO isn't part of your core pipeline. Fix it, but don't let it block Archive/Analyst MCP work.
+
+**The one I'd elevate:**
+
+`MemoryCore` vs `EauDevMemoryStore` is not a cleanup item — it's a design question. `MemoryCore` has async wrappers and a cleaner interface. `EauDevMemoryStore` is what's actually running. Either one should be deleted. Which one you keep has implications for how Archive MCP and Analyst MCP integrate with the memory layer.
+
+**My recommendation for the brief order:**
+
+1. High severity fixes (VoiceIO stdin leak, stop() guard, asyncio conflict) — quick wins
+2. Archive `core.py` — trivial
+3. Decide on `MemoryCore` vs `EauDevMemoryStore` — needs a decision from you before qwen-code touches it
+4. Wire `context_monitor.py` into defaults — if you want context warnings
+5. `generate_hook_mcp` — understand what it does first
+
+From USER:
+
+Make all suggested fixes but index anything the User has to give inout on, save it for later.

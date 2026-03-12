@@ -1,0 +1,140 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# NARROW MCP SERVER MODEL CARD — Extractor MCP
+# ─────────────────────────────────────────────────────────────────────────────
+
+server_id: extractor-mcp-v9
+server_name: Extractor MCP
+server_version: "9.0.0"
+author: Cluster
+created_at: "2026-03-03T00:00:00Z"
+updated_at: "2026-03-03T00:00:00Z"
+
+base_model: "qwen3.5-35B-A3B-UD-Q4_K_M"
+lora_version: ""
+lora_trained_on:
+  - audio.dsp
+lora_training_iters: 0      # Not yet trained — Domain LoRA is next milestone
+lora_rank: 16
+lora_merged: false          # Will be true after Domain LoRA training + merge
+
+description: >
+  Extracts and behaviourally synthesizes canonical function primitives from open
+  source platforms and reference documentation. Reads completed Analyst Packages,
+  uses a two-path generation strategy (deterministic transformation preferred,
+  behavioural synthesis fallback), validates via compile + harness, and archives
+  verified primitives to Archive MCP. Primary proving ground for the Cluster
+  semantic composition pipeline.
+
+capability_tags:
+  - primitive-extraction
+  - behavioural-synthesis
+  - code-normalisation
+  - cross-platform-equivalence
+  - dsp-primitives
+  - primitive-validation
+  - archive-ingestion
+
+input_types:
+  - analyst-package
+  - source-platform-name
+  - primitive-class
+
+output_types:
+  - canonical-primitive
+  - validation-report
+  - archive-artefact
+
+tool_sequence:
+  - read_pedigree           # Load class_graph + symbol_index from Analyst Package
+  - dedupe_pre              # Archive KG query — already archived? skip
+  - load_reference          # Load relevant chunks + KG paths from Archive
+  - generate_deterministic  # PATH A — transpile.py + indexed_symbol_resolver
+  - generate_synthesis      # PATH B (fallback) — specify.py → generate.py
+  - validate                # Compile + behavioural harness + schema validation
+  - dedupe_post             # KG query — NOVEL / DUPLICATE / VARIANT
+  - archive_primitive       # Store in Archive MCP audio.dsp namespace
+
+knowledge_graph:
+  namespaces:
+    - audio.dsp
+  snapshot_path: ""
+  update_cadence: "on Archive audio.dsp namespace update"
+
+constraints: >
+  Extractor MCP reads Analyst Packages only — never raw source files directly.
+  Analyst MCP must run first. Domain LoRA must be trained and merged before
+  synthesis path is reliable. Deterministic path (PATH A) preferred; synthesis
+  path (PATH B) is fallback only. All output primitives must pass compile +
+  behavioural harness before archiving.
+
+lifecycle_mode: agentic_loop
+
+spawn_trigger: >
+  Spawn when user wants to extract function primitives from a source platform
+  (DaisySP, Pure Data, Faust, LT Spice) or synthesize canonical examples from
+  reference documentation. Also spawned when building the audio domain primitive
+  catalogue.
+
+termination:
+  condition: task_complete
+  idle_timeout_minutes: 30
+
+update_trigger: "Archive audio.dsp namespace updated with new reference material"
+last_rebuilt: "2026-03-03T00:00:00Z"
+
+paths:
+  server_entry: ""
+  model_weights: ""
+  graph_snapshot: ""
+  system_prompt: ""
+  log_dir: ""
+  task_reports_dir: ""
+
+archive_namespaces:
+  - audio.dsp
+
+purpose: >
+  Extractor MCP is the primary proving ground for Cluster's semantic composition
+  pipeline. It demonstrates that hallucination-resistant primitive extraction is
+  achievable through the combination of domain LoRA (weight-level knowledge) +
+  KG validation (graph-constrained output) + deterministic transformation
+  (code without LLM when possible).
+
+domain: "Audio DSP / Function Primitive Extraction"
+
+provenance:
+  - "DaisySP open source library"
+  - "Pure Data documentation"
+  - "Julius O. Smith DSP guides (ccrma.stanford.edu)"
+  - "Zölzer — DAFX"
+  - "Chamberlin — Musical Applications of Microprocessors"
+
+design_notes: >
+  V4-V8 history documented in Extractor MCP/docs/CLUSTER_HISTORY_V2_TO_V6.md.
+  Core failure mode: knowledge gap hallucination — solved by Domain LoRA.
+  Secondary failure: API boundary confusion — solved by KG namespace enforcement.
+  V9 reads Analyst Packages (Analyst MCP handles all parsing — never re-parse).
+  Key reused assets: ingest_to_vault.py (V7), transpile.py (V8), test_harness.cpp (V7).
+  Requires Domain LoRA training before synthesis path is reliable.
+  NOTE: Previously erroneously named "Cluster V4/V5/V6/V7/V8" — correct name
+  is Extractor MCP.
+
+related_servers:
+  - analyst-mcp-v1
+  - archive-mcp-v3
+
+oracle_threshold: "MEDIUM"
+
+resource_profile:
+  model_size_gb: 23.0
+  tier: standard
+  concurrent_limit: 1
+  requires_eaudev_yield: false
+
+operational_state:
+  current_state: DORMANT
+  last_heartbeat: ""
+  active_task: ""
+  session_count: 0
+  delta_pending: true       # Domain LoRA training pending
+  last_error: ""
